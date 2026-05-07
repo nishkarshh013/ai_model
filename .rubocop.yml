@@ -1,0 +1,49 @@
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.2
+  Exclude:
+    - 'lib/generators/templates/**/*'
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Gemspec/RequireMFA:
+  Enabled: false
+
+Metrics/AbcSize:
+  Max: 40
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+
+Metrics/ClassLength:
+  Max: 130
+
+Metrics/MethodLength:
+  Max: 35
+
+Style/Documentation:
+  Enabled: false
+
+Style/ArgumentsForwarding:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/KeywordParametersOrder:
+  Enabled: false
+
+Style/MutableConstant:
+  Enabled: false
+
+Naming/BlockForwarding:
+  Enabled: false
+
+Style/RaiseArgs:
+  Enabled: false
+
+Style/SafeNavigation:
+  Enabled: false
