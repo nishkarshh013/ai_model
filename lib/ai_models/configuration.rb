@@ -1,12 +1,13 @@
 module AiModels
   class Configuration
-    attr_accessor :default_provider, :timeout, :open_timeout, :max_retries, :logger
+    attr_accessor :default_provider, :timeout, :open_timeout, :max_retries, :retry_backoff, :logger
 
     def initialize
       @default_provider = :ollama
       @timeout = 60
       @open_timeout = 10
       @max_retries = 2
+      @retry_backoff = ->(attempt) { 0.5 * (2**attempt.to_i) }
       @logger = default_logger
       @providers = {}
       @middleware = Middleware::Stack.default
@@ -33,6 +34,10 @@ module AiModels
 
     def hooks
       @hooks ||= Hooks::Registry.new
+    end
+
+    def reset_hooks!
+      hooks.reset!
     end
 
     def before_request(&)

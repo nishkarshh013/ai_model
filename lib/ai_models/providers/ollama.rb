@@ -152,7 +152,7 @@ module AiModels
       end
 
       def fetch_available_models
-        resp = connection.get('/api/models')
+        resp = connection.get('/api/tags')
         return [] unless resp.success?
 
         body = parse_json(resp.body)

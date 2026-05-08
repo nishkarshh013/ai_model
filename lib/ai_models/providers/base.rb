@@ -54,17 +54,60 @@ module AiModels
             context.latency = current_time - started_at
             run_hook(:after_response, context)
             return response
-          rescue Faraday::TimeoutError => e
-            converted = Errors::TimeoutError.new(e.message)
-            handle_retry_or_error(context, converted, attempts, started_at)
-          rescue Faraday::ConnectionFailed => e
-            converted = Errors::ConnectionError.new(e.message)
-            handle_retry_or_error(context, converted, attempts, started_at)
-          rescue Faraday::Error => e
-            handle_terminal_error(context, Errors::ProviderError.new(e.message), started_at)
+          rescue StandardError => e
+            converted = normalize_exception(e, context: context)
+
+            if converted.is_a?(Errors::TimeoutError) || converted.is_a?(Errors::ConnectionError)
+              handle_retry_or_error(context, converted, attempts, started_at)
+            elsif converted.is_a?(Errors::BaseError)
+              handle_terminal_error(context, converted, started_at)
+            else
+              raise
+            end
           rescue Errors::BaseError => e
             handle_terminal_error(context, e, started_at)
           end
+        end
+      end
+
+      def normalize_exception(exception, context:)
+        return exception if exception.is_a?(Errors::BaseError)
+
+        request_metadata = {
+          model: context.model,
+          messages: context.messages,
+          request_payload: context.request_payload
+        }
+
+        case exception
+        when Faraday::TimeoutError
+          message = "Request to #{context.provider} timed out"
+          Errors::TimeoutError.new(
+            message,
+            provider: context.provider,
+            retry_count: context.retry_count,
+            request_metadata: request_metadata,
+            original_exception: exception
+          )
+        when Faraday::ConnectionFailed, SocketError, SystemCallError
+          message = "Unable to connect to #{context.provider}"
+          Errors::ConnectionError.new(
+            message,
+            provider: context.provider,
+            retry_count: context.retry_count,
+            request_metadata: request_metadata,
+            original_exception: exception
+          )
+        when Faraday::Error
+          Errors::ProviderError.new(
+            exception.message,
+            provider: context.provider,
+            retry_count: context.retry_count,
+            request_metadata: request_metadata,
+            original_exception: exception
+          )
+        else
+          exception
         end
       end
 
@@ -150,16 +193,32 @@ module AiModels
         if retryable_exception?(attempts)
           context.retry_count = attempts
           run_hook(:on_retry, context)
+
+          delay = retry_backoff_delay(attempts - 1)
+          sleep(delay) if delay.positive?
           return nil
         end
 
         handle_terminal_error(context, error, started_at)
       end
 
+      def retry_backoff_delay(attempt)
+        backoff = global_config.respond_to?(:retry_backoff) ? global_config.retry_backoff : nil
+        delay = backoff.respond_to?(:call) ? backoff.call(attempt) : 0
+        delay = delay.to_f
+        delay.negative? ? 0.0 : delay
+      rescue StandardError
+        0.0
+      end
+
       def handle_terminal_error(context, error, started_at)
         context.error = error
         context.latency ||= current_time - started_at
         run_hook(:on_error, context)
+        if error.respond_to?(:original_exception) && error.original_exception
+          raise error, cause: error.original_exception
+        end
+
         raise error
       end
 

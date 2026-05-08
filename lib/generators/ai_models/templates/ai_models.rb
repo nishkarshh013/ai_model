@@ -3,6 +3,7 @@ AiModels.configure do |config|
   config.timeout = 120
   config.open_timeout = 10
   config.max_retries = 3
+  config.log_level = :info
 
   config.providers = {
     ollama: {

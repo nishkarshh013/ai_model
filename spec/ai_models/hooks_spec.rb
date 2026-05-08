@@ -137,6 +137,7 @@ RSpec.describe 'request lifecycle hooks' do
 
     AiModels.configure do |config|
       config.max_retries = 2
+      config.retry_backoff = ->(_) { 0 }
       config.providers = {
         hook_test: {
           mode: :retry_then_success

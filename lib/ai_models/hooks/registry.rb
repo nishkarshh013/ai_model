@@ -5,16 +5,33 @@ module AiModels
 
       def initialize
         @hooks = EVENTS.to_h { |event| [event, []] }
+        @hook_keys = EVENTS.to_h { |event| [event, {}] }
+        @mutex = Mutex.new
       end
 
       def register(event, &block)
         return hooks_for(event) unless block_given?
 
-        hooks_for(event) << block
+        @mutex.synchronize do
+          key = hook_key(block)
+          next if @hook_keys[event][key]
+
+          hooks_for(event) << block
+          @hook_keys[event][key] = true
+        end
+      end
+
+      def reset!
+        @mutex.synchronize do
+          @hooks = EVENTS.to_h { |event| [event, []] }
+          @hook_keys = EVENTS.to_h { |event| [event, {}] }
+        end
       end
 
       def run(event, context, logger:)
-        hooks_for(event).each do |hook|
+        hooks_snapshot = @mutex.synchronize { hooks_for(event).dup }
+
+        hooks_snapshot.each do |hook|
           hook.call(context)
         rescue StandardError => e
           logger&.error("[AiModels] #{event} hook failed: #{e.class}: #{e.message}")
@@ -24,6 +41,11 @@ module AiModels
       private
 
       attr_reader :hooks
+
+      def hook_key(hook)
+        location = hook.source_location
+        location ? [:source_location, location] : [:object_id, hook.object_id]
+      end
 
       def hooks_for(event)
         hooks.fetch(event) do
