@@ -8,7 +8,11 @@ require 'active_support/core_ext'
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   'deepseek' => 'DeepSeek',
-  'openai_compatible' => 'OpenAICompatible'
+  'openai_compatible' => 'OpenAICompatible',
+  'lm_studio' => 'LMStudio',
+  'openrouter' => 'OpenRouter',
+  'localai' => 'LocalAI',
+  'vllm' => 'VLLM'
 )
 loader.ignore("#{__dir__}/generators")
 loader.setup

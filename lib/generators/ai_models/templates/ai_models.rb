@@ -3,7 +3,7 @@ AiModels.configure do |config|
   config.timeout = 120
   config.open_timeout = 10
   config.max_retries = 3
-  config.log_level = :info
+  # config.log_level = :info
 
   config.providers = {
     ollama: {
@@ -12,6 +12,19 @@ AiModels.configure do |config|
     deepseek: {
       api_key: ENV['DEEPSEEK_API_KEY'],
       url: 'https://api.deepseek.com'
+    },
+    lm_studio: {
+      url: 'http://localhost:1234/v1',
+      api_key: 'lm-studio',
+      timeout: 300
+    },
+    groq: {
+      api_key: ENV["GROQ_API_KEY"],
+      url: "https://api.groq.com/openai/v1"
+    },
+    openrouter: {
+      api_key: ENV["OPENROUTER_API_KEY"],
+      url: "https://openrouter.ai/api/v1"
     }
   }
 

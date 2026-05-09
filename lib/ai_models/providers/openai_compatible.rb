@@ -22,6 +22,7 @@ module AiModels
 
       def execute_chat(messages:, model:, payload:)
         with_request_lifecycle(model: model, messages: messages, request_payload: payload) do
+          # debug_request_url(payload)
           response = connection.post(chat_path) do |request|
             apply_request(request, payload)
           end
@@ -37,6 +38,7 @@ module AiModels
         enum = Enumerator.new do |yielder|
           with_request_lifecycle(model: model, messages: messages, request_payload: payload) do
             accumulator = Streaming::ResponseAccumulator.new
+            # debug_request_url(payload)
             response = connection.post(chat_path) do |request|
               apply_request(request, payload)
               request.options.on_data = proc do |chunk, _bytes, _env|
@@ -114,7 +116,18 @@ module AiModels
       end
 
       def chat_path
-        config[:path] || DEFAULT_PATH
+        configured = config[:path]
+        return configured if configured
+
+        uri = URI.parse(base_url)
+        base_path = uri.path.to_s
+        base_has_prefix = !base_path.empty? && base_path != '/'
+
+        return DEFAULT_PATH unless base_has_prefix
+
+        'chat/completions'
+      rescue URI::InvalidURIError
+        DEFAULT_PATH
       end
 
       def api_key
@@ -123,6 +136,30 @@ module AiModels
 
       def custom_headers
         config.fetch(:headers, {})
+      end
+
+      def debug_request_url(payload)
+        return unless ENV['AI_MODELS_DEBUG_URLS'] == 'true'
+
+        logger = global_config&.logger
+        return unless logger
+
+        url = base_url
+        path = chat_path
+        final = begin
+          uri = URI.parse(url)
+          uri.path = uri.path.to_s
+          uri.path = (uri.path.end_with?('/') ? uri.path : "#{uri.path}/") + path.to_s
+          uri.to_s
+        rescue URI::InvalidURIError
+          nil
+        end
+
+        logger.debug(
+          "[AiModels] provider=#{provider_key} base_url=#{url.inspect} chat_path=#{path.inspect} final_url=#{final.inspect} payload_keys=#{payload.keys.inspect}"
+        )
+      rescue StandardError
+        nil
       end
     end
   end

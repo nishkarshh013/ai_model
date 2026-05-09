@@ -182,6 +182,15 @@ Hook failures are swallowed and logged so instrumentation never breaks the reque
 - `AiModels::Providers::Ollama` uses Ollama's native chat endpoint and streaming format
 - `AiModels::Providers::DeepSeek` extends the OpenAI-compatible adapter
 
+Additional OpenAI-compatible providers are implemented as thin adapters over
+`AiModels::Providers::OpenAICompatible`:
+
+- `:groq`
+- `:lm_studio`
+- `:openrouter`
+- `:localai`
+- `:vllm`
+
 All providers normalize their output into `AiModels::Response`.
 
 ## Error handling
@@ -216,3 +225,80 @@ The test stack uses:
 - WebMock
 
 The architecture is intentionally ready to expand into embeddings, tool calling, and agent workflows without changing the public API.
+
+## Provider examples
+
+All OpenAI-compatible providers share the same request/response normalization, retry lifecycle, hooks, and streaming behavior.
+Switching providers is typically just a change in `config.providers`.
+
+### Groq
+
+```ruby
+AiModels.configure do |config|
+  config.providers = {
+    groq: {
+      api_key: ENV['GROQ_API_KEY']
+    }
+  }
+end
+
+AiModels.chat(provider: :groq, model: 'llama3-70b-8192', messages: [{ role: 'user', content: 'Hello' }])
+```
+
+### LM Studio
+
+```ruby
+AiModels.configure do |config|
+  config.providers = {
+    lm_studio: {
+      url: 'http://localhost:1234/v1'
+    }
+  }
+end
+
+AiModels.chat(provider: :lm_studio, model: 'local-model', messages: [{ role: 'user', content: 'Hello' }])
+```
+
+### OpenRouter
+
+```ruby
+AiModels.configure do |config|
+  config.providers = {
+    openrouter: {
+      api_key: ENV['OPENROUTER_API_KEY'],
+      http_referer: 'https://example.com',
+      x_title: 'MyApp'
+    }
+  }
+end
+
+AiModels.chat(provider: :openrouter, model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Hello' }])
+```
+
+### LocalAI
+
+```ruby
+AiModels.configure do |config|
+  config.providers = {
+    localai: {
+      url: 'http://localhost:8080/v1'
+    }
+  }
+end
+
+AiModels.chat(provider: :localai, model: 'llama3', messages: [{ role: 'user', content: 'Hello' }])
+```
+
+### vLLM
+
+```ruby
+AiModels.configure do |config|
+  config.providers = {
+    vllm: {
+      url: 'http://localhost:8000/v1'
+    }
+  }
+end
+
+AiModels.chat(provider: :vllm, model: 'meta-llama/Meta-Llama-3-8B-Instruct', messages: [{ role: 'user', content: 'Hello' }])
+```

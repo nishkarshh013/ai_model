@@ -22,7 +22,12 @@ module AiModels
           @providers ||= {
             ollama: Ollama,
             deepseek: DeepSeek,
-            openai: OpenAICompatible
+            openai: OpenAICompatible,
+            groq: Groq,
+            lm_studio: LMStudio,
+            openrouter: OpenRouter,
+            localai: LocalAI,
+            vllm: VLLM
           }
         end
       end
