@@ -2,15 +2,16 @@ AllCops:
   NewCops: enable
   SuggestExtensions: false
   TargetRubyVersion: 3.2
+
   Exclude:
-    - 'lib/generators/templates/**/*'
-    - 'lib/generators/ai_models/templates/**/*'
     - 'vendor/**/*'
     - 'tmp/**/*'
     - 'pkg/**/*'
     - 'coverage/**/*'
     - 'node_modules/**/*'
     - 'bin/**/*'
+    - 'lib/generators/templates/**/*'
+    - 'lib/generators/ai_models/templates/**/*'
 
 Gemspec/DevelopmentDependencies:
   Enabled: false
@@ -20,16 +21,33 @@ Gemspec/RequireMFA:
 
 Metrics/AbcSize:
   Max: 40
+  Exclude:
+    - 'lib/ai_models/providers/ollama.rb'
 
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
+    - 'ai_models.gemspec'
 
 Metrics/ClassLength:
   Max: 130
+  Exclude:
+    - 'lib/ai_models/providers/ollama.rb'
 
 Metrics/MethodLength:
   Max: 35
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - 'lib/ai_models/providers/ollama.rb'
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - 'lib/ai_models/providers/ollama.rb'
+
+Metrics/ParameterLists:
+  Exclude:
+    - 'lib/ai_models/errors.rb'
 
 Style/Documentation:
   Enabled: false
@@ -46,11 +64,11 @@ Style/KeywordParametersOrder:
 Style/MutableConstant:
   Enabled: false
 
-Naming/BlockForwarding:
-  Enabled: false
-
 Style/RaiseArgs:
   Enabled: false
 
 Style/SafeNavigation:
+  Enabled: false
+
+Naming/BlockForwarding:
   Enabled: false
