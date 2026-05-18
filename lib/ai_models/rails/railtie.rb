@@ -6,7 +6,7 @@ module AiModels
       end
 
       generators do
-        require "generators/ai_models/install_generator"
+        require 'generators/ai_models/install_generator'
         # require_relative '../../../generators/ai_models/install_generator'
       end
     end

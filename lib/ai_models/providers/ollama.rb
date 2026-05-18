@@ -141,13 +141,15 @@ module AiModels
         requested_dash = requested.tr('.', '-')
 
         # Exact match first
-        match = available.find { |m| m.to_s.downcase == requested || m.to_s.downcase == requested_dash }
+        match = available.find { |m| [requested, requested_dash].include?(m.to_s.downcase) }
         return match if match
 
         # Partial / fuzzy matches: contains or same prefix
-        match = available.find { |m| m.to_s.downcase.include?(requested_dash) || m.to_s.downcase.start_with?(requested.split(/[\.-]/).first) }
+        match = available.find do |m|
+          m.to_s.downcase.include?(requested_dash) || m.to_s.downcase.start_with?(requested.split(/[.-]/).first)
+        end
         match || model
-      rescue => _e
+      rescue StandardError => _e
         model
       end
 
@@ -169,20 +171,18 @@ module AiModels
         else
           []
         end
-      rescue => _e
+      rescue StandardError => _e
         []
       end
 
       def extract_content(body)
         case body
         when Hash
-          body.dig("message", "content") ||
-            body["response"] ||
-            body["content"]
+          body.dig('message', 'content') ||
+            body['response'] ||
+            body['content']
         when String
           body
-        else
-          nil
         end
       end
     end
