@@ -1,6 +1,6 @@
 # ai_models
 
-![CI](https://github.com/nishkarshh013/ai_model/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/nishkarshh013/ai_models/actions/workflows/ci.yml/badge.svg)
 ![Ruby](https://img.shields.io/badge/ruby-3.2%2B-red)
 ![Rails](https://img.shields.io/badge/rails-7%2B-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
