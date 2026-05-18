@@ -1,5 +1,11 @@
 # ai_models
 
+![CI](https://github.com/nishkarshh013/ai_models/actions/workflows/ci.yml/badge.svg)
+![Ruby](https://img.shields.io/badge/ruby-3.2%2B-red)
+![Rails](https://img.shields.io/badge/rails-7%2B-red)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-alpha-orange)
+
 `ai_models` is a Rails-native abstraction layer for AI and LLM providers. It is designed like a framework component, not a thin HTTP wrapper, with a unified chat API, normalized responses, provider adapters, configurable middleware, streaming, and Rails integration.
 
 ## Why ai_models?
