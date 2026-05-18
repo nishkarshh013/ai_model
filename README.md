@@ -404,3 +404,11 @@ end
 
 AiModels.chat(provider: :vllm, model: 'meta-llama/Meta-Llama-3-8B-Instruct', messages: [{ role: 'user', content: 'Hello' }])
 ```
+
+## Examples
+
+See the `/examples` directory for runnable usage examples:
+- basic chat
+- streaming
+- Ollama
+- LM Studio
