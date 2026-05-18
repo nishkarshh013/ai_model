@@ -36,4 +36,4 @@ jobs:
         run: bundle exec rspec
 
       - name: Run RuboCop
-        run: bundle exec rubocop --parallel
+        run: bundle exec rubocop --cache false

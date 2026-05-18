@@ -5,6 +5,12 @@ AllCops:
   Exclude:
     - 'lib/generators/templates/**/*'
     - 'lib/generators/ai_models/templates/**/*'
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'pkg/**/*'
+    - 'coverage/**/*'
+    - 'node_modules/**/*'
+    - 'bin/**/*'
 
 Gemspec/DevelopmentDependencies:
   Enabled: false
