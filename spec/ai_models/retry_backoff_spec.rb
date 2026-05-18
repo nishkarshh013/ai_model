@@ -35,20 +35,19 @@ RSpec.describe 'retry backoff' do
       config.providers = { retry_backoff_test: {} }
     end
 
-    provider_instance = nil
-    allow_any_instance_of(AiModels::Providers::Registry.fetch(:retry_backoff_test)).to receive(:sleep) do |instance, _|
-      provider_instance ||= instance
+    delays = []
+    allow_any_instance_of(
+      AiModels::Providers::Registry.fetch(:retry_backoff_test)
+    ).to receive(:sleep) do |_instance, seconds|
+      delays << seconds
       nil
     end
-
-    expect(provider_instance).to be_nil
-
-    expect_any_instance_of(AiModels::Providers::Registry.fetch(:retry_backoff_test)).to receive(:sleep).with(0.5).ordered
-    expect_any_instance_of(AiModels::Providers::Registry.fetch(:retry_backoff_test)).to receive(:sleep).with(1.0).ordered
 
     expect do
       AiModels.chat(provider: :retry_backoff_test, model: 'demo', messages: messages)
     end.to raise_error(AiModels::Errors::ConnectionError)
+
+    expect(delays).to eq([0.5, 1.0])
   end
 
   it 'supports a custom backoff strategy' do

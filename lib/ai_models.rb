@@ -1,6 +1,7 @@
 require 'faraday'
 require 'logger'
 require 'oj'
+require 'securerandom'
 require 'zeitwerk'
 require 'active_support'
 require 'active_support/core_ext'

@@ -60,6 +60,7 @@ RSpec.describe 'request lifecycle hooks' do
 
   it 'executes before_request and after_response hooks with structured context' do
     events = []
+    expected_payload = { model: 'demo-model', messages: messages, stream: false }
 
     AiModels.configure do |config|
       config.providers = {
@@ -75,12 +76,23 @@ RSpec.describe 'request lifecycle hooks' do
           context.model,
           context.messages,
           context.request_payload,
+          context.request_id.is_a?(String),
+          context.attempt,
+          context.stream?,
           context.retry_count
         ]
       end
 
       config.after_response do |context|
-        events << [:after, context.response.content, context.latency.positive?, context.error]
+        events << [
+          :after,
+          context.response.content,
+          context.latency.positive?,
+          context.error,
+          context.request_id.is_a?(String),
+          context.attempt,
+          context.stream?
+        ]
       end
     end
 
@@ -93,8 +105,8 @@ RSpec.describe 'request lifecycle hooks' do
     expect(response.content).to eq('ok')
     expect(events).to eq(
       [
-        [:before, :hook_test, 'demo-model', messages, { model: 'demo-model', messages: messages, stream: false }, 0],
-        [:after, 'ok', true, nil]
+        [:before, :hook_test, 'demo-model', messages, expected_payload, true, 1, false, 0],
+        [:after, 'ok', true, nil, true, 1, false]
       ]
     )
   end
@@ -134,6 +146,7 @@ RSpec.describe 'request lifecycle hooks' do
   it 'runs retry hooks and exposes retry count' do
     retry_events = []
     after_events = []
+    request_ids = []
 
     AiModels.configure do |config|
       config.max_retries = 2
@@ -145,11 +158,13 @@ RSpec.describe 'request lifecycle hooks' do
       }
 
       config.on_retry do |context|
-        retry_events << [context.retry_count, context.error.class, context.latency.positive?]
+        request_ids << context.request_id
+        retry_events << [context.retry_count, context.attempt, context.error.class, context.latency.positive?]
       end
 
       config.after_response do |context|
-        after_events << [context.retry_count, context.response.content]
+        request_ids << context.request_id
+        after_events << [context.retry_count, context.attempt, context.response.content]
       end
     end
 
@@ -160,8 +175,9 @@ RSpec.describe 'request lifecycle hooks' do
     )
 
     expect(response.content).to eq('ok after retry')
-    expect(retry_events).to eq([[1, AiModels::Errors::ConnectionError, true]])
-    expect(after_events).to eq([[1, 'ok after retry']])
+    expect(retry_events).to eq([[1, 2, AiModels::Errors::ConnectionError, true]])
+    expect(after_events).to eq([[1, 2, 'ok after retry']])
+    expect(request_ids.uniq.size).to eq(1)
   end
 
   it 'runs error hooks with the normalized error context' do
@@ -179,9 +195,11 @@ RSpec.describe 'request lifecycle hooks' do
         error_events << [
           context.provider,
           context.retry_count,
+          context.attempt,
           context.error.class,
           context.error.message,
-          context.latency.positive?
+          context.latency.positive?,
+          context.request_id.is_a?(String)
         ]
       end
     end
@@ -195,12 +213,47 @@ RSpec.describe 'request lifecycle hooks' do
     end.to raise_error(AiModels::Errors::AuthenticationError, 'bad token')
 
     expect(error_events).to eq(
-      [[:hook_test, 0, AiModels::Errors::AuthenticationError, 'bad token', true]]
+      [[:hook_test, 0, 1, AiModels::Errors::AuthenticationError, 'bad token', true, true]]
+    )
+  end
+
+  it 'includes request correlation metadata on normalized retryable errors' do
+    request_id = nil
+    error = nil
+
+    AiModels.configure do |config|
+      config.max_retries = 0
+      config.providers = {
+        hook_test: {
+          mode: :retry_then_success
+        }
+      }
+
+      config.on_error do |context|
+        request_id = context.request_id
+        error = context.error
+      end
+    end
+
+    expect do
+      AiModels.chat(
+        provider: :hook_test,
+        model: 'demo-model',
+        messages: messages
+      )
+    end.to raise_error(AiModels::Errors::ConnectionError)
+
+    expect(error.request_metadata[:request_id]).to eq(request_id)
+    expect(error.request_metadata[:request_payload]).to eq(
+      model: 'demo-model',
+      messages: messages,
+      stream: false
     )
   end
 
   it 'captures aggregated streaming responses in after_response hooks' do
     responses = []
+    stream_contexts = []
     streamed_chunks = []
 
     AiModels.configure do |config|
@@ -212,6 +265,7 @@ RSpec.describe 'request lifecycle hooks' do
 
       config.after_response do |context|
         responses << context.response
+        stream_contexts << [context.stream?, context.attempt, context.request_id]
       end
     end
 
@@ -226,5 +280,7 @@ RSpec.describe 'request lifecycle hooks' do
     expect(streamed_chunks).to eq(%w[hello world])
     expect(responses.first.content).to eq('helloworld')
     expect(responses.first.model).to eq('demo-model')
+    expect(stream_contexts.first[0..1]).to eq([true, 1])
+    expect(stream_contexts.first.last).to be_a(String)
   end
 end

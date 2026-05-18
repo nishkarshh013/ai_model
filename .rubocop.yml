@@ -4,6 +4,7 @@ AllCops:
   TargetRubyVersion: 3.2
   Exclude:
     - 'lib/generators/templates/**/*'
+    - 'lib/generators/ai_models/templates/**/*'
 
 Gemspec/DevelopmentDependencies:
   Enabled: false

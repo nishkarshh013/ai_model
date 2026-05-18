@@ -23,8 +23,8 @@ module AiModels
       def execute_chat(messages:, model:, payload:)
         with_request_lifecycle(model: model, messages: messages, request_payload: payload) do
           # debug_request_url(payload)
-          response = connection.post(chat_path) do |request|
-            apply_request(request, payload)
+          response = connection.post(chat_path, encode_json(payload), request_headers) do |request|
+            apply_request_options(request)
           end
 
           handle_http_errors!(response)
@@ -39,8 +39,8 @@ module AiModels
           with_request_lifecycle(model: model, messages: messages, request_payload: payload) do
             accumulator = Streaming::ResponseAccumulator.new
             # debug_request_url(payload)
-            response = connection.post(chat_path) do |request|
-              apply_request(request, payload)
+            response = connection.post(chat_path, encode_json(payload), request_headers) do |request|
+              apply_request_options(request)
               request.options.on_data = proc do |chunk, _bytes, _env|
                 parser.push(chunk).each do |event|
                   next if event == Streaming::Parser::DONE
@@ -97,14 +97,15 @@ module AiModels
         options.except(:headers)
       end
 
-      def apply_request(request, payload)
-        request.headers['Authorization'] = "Bearer #{api_key}" if api_key.present?
-        custom_headers.each do |key, value|
-          request.headers[key] = value
-        end
+      def apply_request_options(request)
         request.options.timeout = request_options[:timeout]
         request.options.open_timeout = request_options[:open_timeout]
-        request.body = encode_json(payload)
+      end
+
+      def request_headers
+        headers = custom_headers.dup
+        headers['Authorization'] = "Bearer #{api_key}" if api_key.present?
+        headers
       end
 
       def connection
@@ -156,7 +157,9 @@ module AiModels
         end
 
         logger.debug(
-          "[AiModels] provider=#{provider_key} base_url=#{url.inspect} chat_path=#{path.inspect} final_url=#{final.inspect} payload_keys=#{payload.keys.inspect}"
+          "[AiModels] provider=#{provider_key} " \
+          "base_url=#{url.inspect} chat_path=#{path.inspect} " \
+          "final_url=#{final.inspect} payload_keys=#{payload.keys.inspect}"
         )
       rescue StandardError
         nil

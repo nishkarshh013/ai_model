@@ -2,6 +2,20 @@
 
 `ai_models` is a Rails-native abstraction layer for AI and LLM providers. It is designed like a framework component, not a thin HTTP wrapper, with a unified chat API, normalized responses, provider adapters, configurable middleware, streaming, and Rails integration.
 
+## Why ai_models?
+
+- The AI ecosystem is fragmented: providers expose different HTTP APIs, streaming formats, and authentication mechanisms.
+- Rails applications often implement provider-specific integrations, coupling business logic to vendor SDKs.
+- `ai_models` provides a provider-independent, Rails-native abstraction layer that normalizes requests, streaming, and responses across vendors.
+- Conceptually similar to ActiveRecord abstracting databases: swap providers without rewriting application logic.
+
+## Why not use provider SDKs directly?
+
+- Provider SDKs tightly couple applications to vendor-specific formats, streaming protocols, and error models.
+- Providers implement streaming and incremental responses differently; response payloads and error shapes vary.
+- `ai_models` normalizes responses, standardizes the streaming lifecycle, and exposes Rails-friendly hooks and middleware so you can change providers with minimal code changes.
+
+
 ## Features
 
 - Unified public API with `AiModels.chat` and `AiModels.chat_stream`
@@ -11,6 +25,14 @@
 - Configurable middleware stack for retry and logging
 - Rails Railtie and install generator
 - Extensible architecture for future embeddings, tools, and agents
+
+## Status
+
+- This gem is currently in alpha. The core architecture and streaming abstractions are validated and in active use.
+- We have tested the library with local runtimes and OpenAI-compatible providers; APIs may evolve prior to a stable v1 release.
+
+Planned features (short-term): embeddings, tool/function calling, Rails Turbo streaming helpers, AI observability, and provider failover.
+
 
 ## Installation
 
@@ -52,19 +74,19 @@ AiModels.configure do |config|
   }
 
   config.before_request do |context|
-    Rails.logger.debug("AI request provider=#{context.provider} model=#{context.model}")
+    Rails.logger.debug("AI request id=#{context.request_id} provider=#{context.provider} attempt=#{context.attempt}")
   end
 
   config.after_response do |context|
-    Rails.logger.info("AI completed in #{context.latency.round(3)}s")
+    Rails.logger.info("AI request id=#{context.request_id} completed in #{context.latency.round(3)}s")
   end
 
   config.on_error do |context|
-    Rails.logger.error("AI error #{context.error.class}: #{context.error.message}")
+    Rails.logger.error("AI request id=#{context.request_id} failed with #{context.error.class}: #{context.error.message}")
   end
 
   config.on_retry do |context|
-    Rails.logger.warn("Retry ##{context.retry_count} for #{context.provider}")
+    Rails.logger.warn("AI request id=#{context.request_id} retry=#{context.retry_count} provider=#{context.provider}")
   end
 end
 ```
@@ -168,10 +190,17 @@ Each hook receives an `AiModels::Hooks::Context` with:
 - `model`
 - `messages`
 - `request_payload`
+- `request_id`
 - `response`
 - `error`
 - `retry_count`
 - `latency`
+- `attempt`
+
+Helpful context helpers:
+
+- `context.attempt`
+- `context.stream?`
 
 Hook failures are swallowed and logged so instrumentation never breaks the request lifecycle.
 
@@ -192,6 +221,47 @@ Additional OpenAI-compatible providers are implemented as thin adapters over
 - `:vllm`
 
 All providers normalize their output into `AiModels::Response`.
+
+## Architecture overview
+
+Rails App
+  ↓
+AiModels.chat
+  ↓
+Client
+  ↓
+Provider Registry
+  ↓
+Provider Adapter
+  ↓
+Ollama / LM Studio / DeepSeek / Groq
+
+- Provider isolation: each provider adapter encapsulates transport, auth, and streaming differences.
+- Normalized responses: `AiModels::Response` provides a consistent surface across providers.
+- Reusable streaming lifecycle: streaming is implemented once and reused across adapters.
+- OpenAI-compatible adapter reuse: many providers share an OpenAI-style adapter to reduce duplication.
+
+## Tested providers
+
+| Provider | Status | Notes |
+|---|---:|---|
+| Ollama | validated | Native Ollama chat + streaming tested against local runtime |
+| LM Studio | validated | Local LM Studio integration and streaming validated |
+| DeepSeek | validated | Core provider integration and streaming validated |
+| Groq | experimental | OpenAI-compatible adapter; exercise caution in production |
+| OpenRouter | experimental | OpenAI-compatible adapter; limited validation |
+| LocalAI | experimental | Local runtime support via OpenAI-compatible adapter |
+| vLLM | experimental | Basic support via OpenAI-compatible adapter |
+
+## Local AI support
+
+The gem supports local AI runtimes including Ollama, LM Studio, LocalAI, and vLLM. Running models locally provides benefits:
+
+- Privacy and reduced data exposure
+- Offline or air-gapped inference
+- Self-hosted control over models and scaling
+- Reduced dependency on cloud provider billing and network latency
+
 
 ## Error handling
 
@@ -216,6 +286,32 @@ This creates:
 ```text
 config/initializers/ai_models.rb
 ```
+
+## Roadmap
+
+- [x] Unified chat API
+- [x] Streaming abstraction
+- [x] Provider architecture
+- [x] Retry lifecycle
+- [x] Hooks
+- [x] Rails integration
+- [ ] Embeddings API
+- [ ] Tool/function calling
+- [ ] Provider failover
+- [ ] AI observability
+- [ ] Turbo Stream helpers
+- [ ] ActionCable helpers
+
+## Compatibility
+
+- Ruby 3.2+
+- Rails 7+
+
+## Contributing
+
+- Contributions are welcome. Please open issues for bug reports or architecture discussions.
+- We're particularly interested in provider adapters, streaming improvements, and observability integrations.
+
 
 ## Testing
 

@@ -14,6 +14,15 @@ RSpec.describe AiModels::Configuration do
         [AiModels::Middleware::Retry, AiModels::Middleware::Logging]
       )
     end
+
+    it 'starts with an empty lifecycle hook registry' do
+      configuration = described_class.new
+
+      expect(configuration.hooks.register(:before_request)).to eq([])
+      expect(configuration.hooks.register(:after_response)).to eq([])
+      expect(configuration.hooks.register(:on_error)).to eq([])
+      expect(configuration.hooks.register(:on_retry)).to eq([])
+    end
   end
 
   describe '#providers=' do
@@ -33,6 +42,22 @@ RSpec.describe AiModels::Configuration do
         api_key: 'token',
         headers: { 'X-Test': '1' }
       )
+    end
+  end
+
+  describe 'lifecycle hook registration' do
+    it 'registers public request lifecycle callbacks' do
+      configuration = described_class.new
+
+      configuration.before_request { |_context| :before }
+      configuration.after_response { |_context| :after }
+      configuration.on_error { |_context| :error }
+      configuration.on_retry { |_context| :retry }
+
+      expect(configuration.hooks.register(:before_request).size).to eq(1)
+      expect(configuration.hooks.register(:after_response).size).to eq(1)
+      expect(configuration.hooks.register(:on_error).size).to eq(1)
+      expect(configuration.hooks.register(:on_retry).size).to eq(1)
     end
   end
 end
